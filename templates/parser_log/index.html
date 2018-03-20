@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<form action="{% url 'parser_log:index' %}" method="GET">
+    {{ form }}
+    <input type="submit" value="Submit" />
+</form>
+
+{% if log %}
+<table border="2">
+        <tr>
+            <td>ip adress</td>
+            <td>Date</td>
+            <td>Method</td>
+            <td>URL</td>
+            <td>response code</td>
+            <td>response size</td>
+        </tr>
+    {% for row in log %}
+        <tr>
+            <td>{{row.ip}}</td>
+            <td>{{row.date}}</td>
+            <td>{{row.method}}</td>
+            <td>{{row.url}}</td>
+            <td>{{row.id_resp}}</td>
+            <td>{{row.resp_size}}</td>
+        </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+<br>
+<p><a href="{% url 'parser_log:index' %}">На главную</a></p>
+<br>
+<h2>Агрегированная информация по загруженному логу</h2>
+
+<p>Количество записей - {{count_records}}</p>
+<p>Количество уникальных IP-adress - {{unique_ip}}</p>
+<p>из них наиболее повторяющиеся:
+    <table border="1">
+    <tr><td>IP adress</td><td>количество</td></tr>
+
+    {% for ip in sum_unique_ip %}
+    <tr>
+        <td>{{ip.0}}</td>
+        <td>{{ip.1}}</td>
+    </tr>
+    {% endfor %}
+    </table>
+</p>
+<p>количество http методов
+    <table border="1">
+    <tr><td>метод</td><td>количество</td></tr>
+    {% for method in sum_method %}
+    <tr>
+        <td>{{method.0}}</td>
+        <td>{{method.1}}</td>
+    </tr>
+    {% endfor %}
+</table>
+</p>
+
+<p>Общее количество переданных байт - {{sum_responce.resp_size__sum}} b</p>
+
+<div class="pagination" align="center">
+	<span class="current">
+		Страница {{ page_obj.number }} из {{ paginator.num_pages }}
+	</span>
+	<span class="step-links">
+		{% if page_obj.has_previous %}
+			<a href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
+		{% endif %}
+		{% if page_obj.has_next %}
+			<a href="?page={{ page_obj.next_page_number }}">Следующая</a>
+		{% endif %}
+	</span>
+</div>
