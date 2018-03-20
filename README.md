@@ -17,12 +17,12 @@ Quick start
 
 2. Include the log_doctor URLconf in your project urls.py like this::
 
-    path(r'^doctor/', include('parser_log.urls')),
+    path(r'^log/', include('parser_log.urls')),
 
 3. Run `python manage.py migrate` to create the parser_log models.
 
 4. Run python manage.py downloadlog url\to\logfile\Apache. 
    (example "python manage.py downloadlog http://www.almhuette-raith.at/apache-log/access.log")
 
-5. Start the development server and visit http://127.0.0.1:8000/apachelog/
+5. Start the development server and visit http://127.0.0.1:8000/log/
    to view aggregated information about the log file

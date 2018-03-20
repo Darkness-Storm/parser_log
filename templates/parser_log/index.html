@@ -3,7 +3,8 @@
     {{ form }}
     <input type="submit" value="Submit" />
 </form>
-
+<br>
+<br>
 {% if log %}
 <table border="2">
         <tr>
@@ -33,12 +34,12 @@
 <h2>Агрегированная информация по загруженному логу</h2>
 
 <p>Количество записей - {{count_records}}</p>
-<p>Количество уникальных IP-adress - {{unique_ip}}</p>
+<p>Количество уникальных IP-adress - {{sum_unique_ip}}</p>
 <p>из них наиболее повторяющиеся:
     <table border="1">
     <tr><td>IP adress</td><td>количество</td></tr>
 
-    {% for ip in sum_unique_ip %}
+    {% for ip in unique_ip %}
     <tr>
         <td>{{ip.0}}</td>
         <td>{{ip.1}}</td>

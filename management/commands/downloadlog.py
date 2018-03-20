@@ -48,7 +48,7 @@ class Command(BaseCommand):
                 fd.write(chunk)
                 size_file = os.path.getsize(fd.name)
                 per = self.percent(size_file)
-                if (per > percent):
+                if per > percent:
                     percent = per
                     self.stdout.write('Complete - '
                                       + str(percent)
@@ -72,10 +72,14 @@ class Command(BaseCommand):
         settings.USE_TZ = False
         with open(self.path_file, 'r') as file:
             self.stdout.write('Start parsing and writing to DB.')
+            #количество обработанных строк
             count_str = 0
+            #размер обработанных строк в байтах
             size_record = 0
             self.size_file = os.path.getsize(self.path_file)
+            # список для для массового сохранения объектов ApacheLog
             list_log = []
+
             for s in file:
                 count_str += 1
                 size_record += len(s.encode('utf-8'))
@@ -84,8 +88,8 @@ class Command(BaseCommand):
                     ip = r[0]
                     date = self.parse_date(r[3][1:])
                     method = r[5][1:]
-                    """В логе в есть места, где вместо метода 'POST' или 'GET'
-                    адовая ерунда с окончанием 'POST' или 'GET'"""
+                    #В логе в есть места, где вместо метода 'POST' или 'GET'
+                    #адовая ерунда с окончанием 'POST' или 'GET'"""
                     if method.endswith('POST') and len(method) > 4:
                         method = 'POST'
                     elif method.endswith('GET') and len(method) > 3:
@@ -128,3 +132,4 @@ class Command(BaseCommand):
         sec = int(l1[3])
         full_date = datetime.datetime(year, month, day, hour, min, sec)
         return full_date
+
