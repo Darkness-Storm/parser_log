@@ -4,6 +4,9 @@
     <input type="submit" value="Submit" />
 </form>
 <br>
+{% if criteria != None %}
+    <p>Результаты поиска по {{ criteria }}</p>
+{% endif %}
 <br>
 {% if log %}
 <table border="2">
@@ -29,7 +32,7 @@
 {% endif %}
 
 <br>
-<p><a href="{% url 'parser_log:index' %}">На главную</a></p>
+<p><a href="{% url 'parser_log:index' %}">На главную</a> <a href="{% url 'parser_log:export_xls' %}?criteria={{ criteria}}">Export xls</a></p>
 <br>
 <h2>Агрегированная информация по загруженному логу</h2>
 
@@ -58,8 +61,8 @@
     {% endfor %}
 </table>
 </p>
-
 <p>Общее количество переданных байт - {{sum_responce.resp_size__sum}} b</p>
+
 
 <div class="pagination" align="center">
 	<span class="current">
@@ -67,10 +70,10 @@
 	</span>
 	<span class="step-links">
 		{% if page_obj.has_previous %}
-			<a href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
+            <a href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
 		{% endif %}
 		{% if page_obj.has_next %}
-			<a href="?page={{ page_obj.next_page_number }}">Следующая</a>
+            <a href="?page={{ page_obj.next_page_number }}">Следующая</a>
 		{% endif %}
 	</span>
 </div>
