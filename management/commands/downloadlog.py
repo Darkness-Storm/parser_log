@@ -26,7 +26,7 @@ MONTH_NAME = {
 }
 
 # lexeme types
-WSP, QUOTED_STRING, DATE, RAW, NO_DATA, IP = range(6) # ENUM
+WSP, QUOTED_STRING, DATE, RAW1, RAW, NO_DATA, IP = range(7) # ENUM
 
 RULES = [
     ('\s+', WSP),
@@ -34,6 +34,7 @@ RULES = [
     ('[0-9]{1,3}(\.[0-9]{1,3}){3}', IP),
     ('"([^"]+)"', QUOTED_STRING),
     ('\[([^\]]+)\]', DATE),
+    ('[0-9]+\s[0-9]+', RAW1),
     ('([^\s]+)', RAW),
 ]
 
@@ -168,28 +169,56 @@ class Command(BaseCommand):
                 except Exception:
                     logging.exception("Error in line '%s'", s)
                     continue  # пропускаем битые строки
-                #print(tokens)
+                    # print(tokens)
+                list_log.append(self.parse_line(tokens))
 
-                for re_match, token_type in tokens:
-                    if token_type == WSP:
-                        continue  # пробелы игнорируем
-                    elif token_type == NO_DATA:
-                        value = None  # NO_DATA заменяем на None
-                    elif token_type == RAW:
-                        value = re_match.group(1)  # MatchObject.group(i) возвращает i-ую заключённую в круглые скобки группу
-                    elif token_type == QUOTED_STRING:
-                        value = re_match.group(1)  # снимаем экранирование с заэкранированных кавычек
-                    elif token_type == DATE:
-                        value = datetime.datetime.strptime(re_match.group(1),
-                                                           "%d/%b/%Y:%H:%M:%S %z")  # парсим дату
-                    elif token_type == IP:
-                        value = re_match.group(0)
-                    else:
-                        raise SyntaxError("Unknown token", token_type, re_match)
-                    print(value)
+    def parse_line(self, tokens):
+        log = ApacheLog()
+        for re_match, token_type in tokens:
+            if token_type == WSP:
+                # пробелы игнорируем
+                continue
+            elif token_type == NO_DATA:
+                # NO_DATA игнорируем
+                continue
+            elif token_type == RAW:
+                value = 'RAW' + re_match.group(1)
+            elif token_type == RAW1:
+                log.id_resp = re_match.group(1)
+                log.resp_size = re_match.group(2)
+            elif token_type == QUOTED_STRING:
+                unescape = re.match(r'([A-Z]+)\s(\/.+)\s([A-Z]+\/(\d)\.(\d))',
+                                    re_match.group(1))
+                if unescape:
+                    log.method = unescape.group(1)
+                    log.url = unescape.group(2)
+                else:
+                    continue
+            elif token_type == DATE:
+                log.date = datetime.datetime.strptime(re_match.group(1),
+                                                   "%d/%b/%Y:%H:%M:%S %z")  # парсим дату
+            elif token_type == IP:
+                log.ip = re_match.group(0)
+            else:
+                raise SyntaxError("Unknown token", token_type, re_match)
+#            print(value)
+        return log
 
 
 #x = datetime.datetime.strptime('13/Dec/2015:14:29:19 +0100','%d/%b/%Y:%H:%M:%S %z')
+WSP, QUOTED_STRING, DATE, RAW1, RAW, NO_DATA, IP = range(7) # ENUM
+
+
+RULES = [
+    ('\s+', WSP),
+    ('-|"-"', NO_DATA),
+    ('[0-9]{1,3}(\.[0-9]{1,3}){3}', IP),
+    ('"([^"]+)"', QUOTED_STRING),
+    ('\[([^\]]+)\]', DATE),
+    ('([0-9]+)\s([0-9]+)', RAW1),
+    ('([^\s]+)', RAW),
+]
+
 
 def Lexer(rules):
     # предварительно компилируем регулярные выражения для ускорения работы

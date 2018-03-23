@@ -7,11 +7,12 @@ s = '194.232.72.121 - - [24/Jul/2017:16:24:42 +0200] "GET /images/phocagallery/a
 # m2 = re.search(r'\s\/(.*)\s+', "GET /index.php?option=com_content&view=article&id=46&Itemid=54 HTTP/1.1")
 # m3 = re.match(r"([A-Z]+)", "GET /index.php?option=com_content&view=article&id=46&Itemid=54 HTTP/1.1")
 # m4 = re.search(r'([A-Z]+)\s+\/(.+?)\s', "GET /index.php?option=com_content&view=article&id=46&Itemid=54 HTTP/1.1")
-# m5 = re.search(r'[A-Z]+\/(\d+)\.(\d+)', s)
+m5 = re.search(r'[A-Z]+\s(\/.+)\s([A-Z]+\/(\d)\.(\d))', s)
 # m5 = re.search(r'([^\s]+)', s)
 # m6 = re.search(r'\[([^\]]+)\]', s)
 m = re.search(r'[1-9]{1,3}\.[1-9]{1,3}', s)
 m = re.search(r'[0-9]{1,3}(\.[0-9]{1,3}){3}', s)
+m = re.search(r'[0-9]+\s[0-9]+', s)
 
 # lexeme types
 WSP, QUOTED_STRING, DATE, RAW, NO_DATA = range(5) # ENUM
