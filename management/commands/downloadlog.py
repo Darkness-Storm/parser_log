@@ -25,25 +25,17 @@ MONTH_NAME = {
     'Dec': 12,
 }
 
-# lexeme types
-WSP, QUOTED_STRING, DATE, RAW1, RAW, NO_DATA, IP = range(7) # ENUM
-
-RULES = [
-    ('\s+', WSP),
-    ('-|"-"', NO_DATA),
-    ('[0-9]{1,3}(\.[0-9]{1,3}){3}', IP),
-    ('"([^"]+)"', QUOTED_STRING),
-    ('\[([^\]]+)\]', DATE),
-    ('[0-9]+\s[0-9]+', RAW1),
-    ('([^\s]+)', RAW),
-]
-
 
 class Command(BaseCommand):
     help = """Accepts a link to a log file of a certain format, downloads it, 
     parses it and writes it to DB."""
     size_file = 0
-    path_file = 'access1.log'
+    path_file = 'access.log'
+
+
+    def __init__(self, *args, **kwargs):
+        super(Command, self).__init__(*args, **kwargs)
+        self.prepared = [(re.compile(regexp), token_type) for regexp, token_type in RULES]
 
     def add_arguments(self, parser):
         parser.add_argument('url', nargs='*', type=str)
@@ -149,30 +141,78 @@ class Command(BaseCommand):
         full_date = datetime.datetime(year, month, day, hour, min, sec)
         return full_date
 
+    def lex(self, line):
+        ll = len(line) # длина строки лога - чтобы знать, когда остановиться
+        i = 0          # текущая позиция анализатора
+        while i < ll:
+            for pattern, token_type in self.prepared:  # пробуем регулярные выражения по очереди
+                match = pattern.match(line, i)    # проверяем соответствует ли регулярное выражение строке с позиции i
+                if match is None:                 # если нет - пробуем следующую регулярку
+                    continue
+                i = match.end()                   # передвигаем позицию анализатора до индекса, соответствующего концу совпадения
+                yield (match, token_type)         # возвращаем найденный токен
+                break                             # начинаем анализировать остаток строки с новым значением сдвига i
+            # по хорошему, в этом месте нужно кидать ошибку SyntaxError(line, i) в случае, если ни один из шаблонов не совпал
+
     def parse_log_re(self):
+
+        # список для для массового сохранения объектов ApacheLog
+        list_log = []
+
+        self.size_file = os.path.getsize(self.path_file)
+
         with open(self.path_file, 'r') as file:
             self.stdout.write('Start parsing and writing to DB.')
             #количество обработанных строк
             count_str = 0
             #размер обработанных строк в байтах
             size_record = 0
-            self.size_file = os.path.getsize(self.path_file)
-            # список для для массового сохранения объектов ApacheLog
-            list_log = []
-            lexer = Lexer(RULES)
+            percent = 0
 
             for s in file:
                 count_str += 1
                 size_record += len(s.encode('utf-8'))
-                try:
-                    tokens = lexer(s)
-                except Exception:
-                    logging.exception("Error in line '%s'", s)
-                    continue  # пропускаем битые строки
-                    # print(tokens)
-                list_log.append(self.parse_line(tokens))
+                log = self.parse_line(s)
+                # print(str(log.date) + ', ' + str(log.ip))
+                if log.date:
+                    if count_str > 3900:
+                    # list_log.append(log)
+                    # if str(count_str).endswith('00'):
+                        print(count_str)
+                        log.save()
+                        #ApacheLog.objects.bulk_create(list_log)
+                    if count_str > 4100:
+                        break
+                    # print(str(log.date) + ', ' + str(log.ip))
+                    # list_log.append(log)
+                    # per = self.percent(size_record)
+                    # if per > percent:
+                    #     # print('per = ' + str(per) + ', percent = ' + str(percent))
+                    #     percent = per
+                    #     self.stdout.write('Complete - '
+                    #                       + str(percent)
+                    #                       + '%. Parsed ' + str(count_str))
+                    #                       #, ending='\r')
+                    #     ApacheLog.objects.bulk_create(list_log, batch_size=100)
+                    #     list_log.clear()
+                        # print(log.date)
+                # else:
+                    # print('False')
 
-    def parse_line(self, tokens):
+            #ApacheLog.objects.bulk_create(list_log)
+
+    def parse_line(self, line):
+        # принимает строку, возвращает объект модели Лог
+        # или None если битая строка
+
+        try:
+            tokens = self.lex(line)
+        except Exception:
+            logging.exception("Error in line '%s'", line)
+            return None
+            # continue  # пропускаем битые строки
+            print('False')
+
         log = ApacheLog()
         for re_match, token_type in tokens:
             if token_type == WSP:
@@ -185,7 +225,10 @@ class Command(BaseCommand):
                 value = 'RAW' + re_match.group(1)
             elif token_type == RAW1:
                 log.id_resp = re_match.group(1)
-                log.resp_size = re_match.group(2)
+                if re_match.group(2) != '-':
+                    log.resp_size = re_match.group(2)
+                else:
+                    log.resp_size = 0
             elif token_type == QUOTED_STRING:
                 unescape = re.match(r'([A-Z]+)\s(\/.+)\s([A-Z]+\/(\d)\.(\d))',
                                     re_match.group(1))
@@ -201,7 +244,6 @@ class Command(BaseCommand):
                 log.ip = re_match.group(0)
             else:
                 raise SyntaxError("Unknown token", token_type, re_match)
-#            print(value)
         return log
 
 
@@ -237,3 +279,8 @@ def Lexer(rules):
                 break                             # начинаем анализировать остаток строки с новым значением сдвига i
             # по хорошему, в этом месте нужно кидать ошибку SyntaxError(line, i) в случае, если ни один из шаблонов не совпал
     return lex
+
+# lexer = Lexer(RULES)
+# s= '109.169.248.247 - - [12/Dec/2015:18:25:11 +0100] "POST /administrator/index.php HTTP/1.1" 200 4494 "http://almhuette-raith.at/administrator/" "Mozilla/5.0 (Windows NT 6.0; rv:34.0) Gecko/20100101 Firefox/34.0" "-"'
+# x = lexer(s)
+# print(x)
