@@ -26,8 +26,8 @@ class ApacheLog (models.Model):
     date = models.DateTimeField()
     method = models.TextField(max_length=10)
     url = models.TextField(max_length=256)
-    id_resp = models.IntegerField(blank=True)
-    resp_size = models.IntegerField(blank=True)
+    id_resp = models.IntegerField(blank=True, default=0)
+    resp_size = models.IntegerField(blank=True, default=0)
 
     # def __str__(self):
     #     return 'IP - ' + self.ip + ', date - ' + self.date \

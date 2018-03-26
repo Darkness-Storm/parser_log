@@ -158,9 +158,7 @@ class Command(BaseCommand):
 
         # список для для массового сохранения объектов ApacheLog
         list_log = []
-
         self.size_file = os.path.getsize(self.path_file)
-
         with open(self.path_file, 'r') as file:
             self.stdout.write('Start parsing and writing to DB.')
             #количество обработанных строк
@@ -172,36 +170,20 @@ class Command(BaseCommand):
             for s in file:
                 count_str += 1
                 size_record += len(s.encode('utf-8'))
-                log = self.parse_line(s)
-                # print(str(log.date) + ', ' + str(log.ip))
+                log = self.parse_line(s, count_str)
                 if log.date:
-                    if count_str > 3900:
-                    # list_log.append(log)
-                    # if str(count_str).endswith('00'):
-                        print(count_str)
-                        log.save()
-                        #ApacheLog.objects.bulk_create(list_log)
-                    if count_str > 4100:
-                        break
-                    # print(str(log.date) + ', ' + str(log.ip))
-                    # list_log.append(log)
-                    # per = self.percent(size_record)
-                    # if per > percent:
-                    #     # print('per = ' + str(per) + ', percent = ' + str(percent))
-                    #     percent = per
-                    #     self.stdout.write('Complete - '
-                    #                       + str(percent)
-                    #                       + '%. Parsed ' + str(count_str))
-                    #                       #, ending='\r')
-                    #     ApacheLog.objects.bulk_create(list_log, batch_size=100)
-                    #     list_log.clear()
-                        # print(log.date)
-                # else:
-                    # print('False')
+                    list_log.append(log)
+                    per = self.percent(size_record)
+                    if per > percent:
+                        percent = per
+                        self.stdout.write('Complete - '
+                                          + str(percent)
+                                          + '%. Parsed ' + str(count_str)
+                                          , ending='\r')
+                        ApacheLog.objects.bulk_create(list_log)
+                        list_log.clear()
 
-            #ApacheLog.objects.bulk_create(list_log)
-
-    def parse_line(self, line):
+    def parse_line(self, line, row_number):
         # принимает строку, возвращает объект модели Лог
         # или None если битая строка
 
@@ -210,8 +192,6 @@ class Command(BaseCommand):
         except Exception:
             logging.exception("Error in line '%s'", line)
             return None
-            # continue  # пропускаем битые строки
-            print('False')
 
         log = ApacheLog()
         for re_match, token_type in tokens:
@@ -222,17 +202,16 @@ class Command(BaseCommand):
                 # NO_DATA игнорируем
                 continue
             elif token_type == RAW:
-                value = 'RAW' + re_match.group(1)
+                resp = re.match(r'([0-9]+)', re_match.group(0))
+                if resp:
+                    log.id_resp = re_match.group(1)
             elif token_type == RAW1:
                 log.id_resp = re_match.group(1)
-                if re_match.group(2) != '-':
-                    log.resp_size = re_match.group(2)
-                else:
-                    log.resp_size = 0
+                log.resp_size = re_match.group(2)
             elif token_type == QUOTED_STRING:
-                unescape = re.match(r'([A-Z]+)\s(\/.+)\s([A-Z]+\/(\d)\.(\d))',
+                un_escape = re.match(r'([A-Z]+)\s(\/|[htps://].*)\s([A-Z]+\/(\d)\.(\d))',
                                     re_match.group(1))
-                if unescape:
+                if un_escape:
                     log.method = unescape.group(1)
                     log.url = unescape.group(2)
                 else:
@@ -247,7 +226,6 @@ class Command(BaseCommand):
         return log
 
 
-#x = datetime.datetime.strptime('13/Dec/2015:14:29:19 +0100','%d/%b/%Y:%H:%M:%S %z')
 WSP, QUOTED_STRING, DATE, RAW1, RAW, NO_DATA, IP = range(7) # ENUM
 
 

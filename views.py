@@ -1,7 +1,7 @@
 from collections import Counter, OrderedDict
 import datetime
 
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, Count
 from django.http import HttpResponse
 from django.views.generic import ListView
 
@@ -48,12 +48,13 @@ class IndexView(ListView):
         context['sum_responce'] = sum_resp
 
         # уникальные ip
-        list_ip = query_log.values_list('ip')
-        sum_unique_ip = len(set(list_ip))
+        sum_unique_ip = query_log.aggregate(sum_ip=Count('ip', distinct=True))
+        # sum_unique_ip = len(set(list_ip))
         context['sum_unique_ip'] = sum_unique_ip
 
-        new_d = OrderedDict(reversed(sorted(Counter(list_ip).items(), key=lambda x: x[1])))
-        unique_ip = [(k[0], v) for k, v in new_d.items()][0:11]
+        # new_d = OrderedDict(reversed(sorted(Counter(list_ip).items(), key=lambda x: x[1])))
+        # unique_ip = [(k[0], v) for k, v in new_d.items()][0:11]
+        unique_ip = query_log.annotate(unique_ip=Count('ip', distinct=True)).order_by('unique_ip').reverse()[0:11]
         context['unique_ip'] = unique_ip
 
         # информация по http-методам

@@ -4,9 +4,9 @@
     <input type="submit" value="Submit" />
 </form>
 <br>
-{% if criteria != None %}
+#{% if criteria != None %}
     <p>Результаты поиска по {{ criteria }}</p>
-{% endif %}
+#{% endif %}
 <br>
 {% if log %}
 <table border="2">
@@ -37,15 +37,16 @@
 <h2>Агрегированная информация по загруженному логу</h2>
 
 <p>Количество записей - {{count_records}}</p>
-<p>Количество уникальных IP-adress - {{sum_unique_ip}}</p>
+<p>Количество уникальных IP-adress - {{sum_unique_ip.sum_ip}}</p>
+<p>{{ unique_ip.unique_ip }}</p>
 <p>из них наиболее повторяющиеся:
     <table border="1">
     <tr><td>IP adress</td><td>количество</td></tr>
 
     {% for ip in unique_ip %}
     <tr>
-        <td>{{ip.0}}</td>
-        <td>{{ip.1}}</td>
+        <td>{{ip.ip}}</td>
+        <td>{{ip.unique_ip}}</td>
     </tr>
     {% endfor %}
     </table>
