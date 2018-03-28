@@ -22,12 +22,12 @@ from django.db import models
 
 class ApacheLog (models.Model):
 
-    ip = models.TextField(max_length=100)
-    date = models.DateTimeField()
-    method = models.TextField(max_length=10)
-    url = models.TextField(max_length=256)
-    id_resp = models.IntegerField(blank=True, default=0)
-    resp_size = models.IntegerField(blank=True, default=0)
+    ip = models.GenericIPAddressField(verbose_name='IP')
+    date = models.DateTimeField(verbose_name='дата запроса')
+    method = models.TextField(verbose_name='HTTP - метод', max_length=25, blank=True, default='')
+    url = models.URLField(verbose_name='URL', default='')
+    id_resp = models.IntegerField(verbose_name='код ответа', blank=True, default=0)
+    resp_size = models.IntegerField(verbose_name='размер ответа', blank=True, default=0)
 
     # def __str__(self):
     #     return 'IP - ' + self.ip + ', date - ' + self.date \

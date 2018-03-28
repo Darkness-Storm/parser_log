@@ -29,21 +29,40 @@ MONTH_NAME = {
 class Command(BaseCommand):
     help = """Accepts a link to a log file of a certain format, downloads it, 
     parses it and writes it to DB."""
+    # размер обрабатываемого файла
     size_file = 0
-    path_file = 'access.log'
 
+    path_file = ''
+    # список для для массового сохранения объектов ApacheLog
+    list_log = []
+    # количество обработанных строк
+    count_str = 0
+    # размер обработанных строк в байтах
+    size_record = 0
+    percent = 0
 
     def __init__(self, *args, **kwargs):
         super(Command, self).__init__(*args, **kwargs)
         self.prepared = [(re.compile(regexp), token_type) for regexp, token_type in RULES]
 
     def add_arguments(self, parser):
-        parser.add_argument('url', nargs='*', type=str)
+        parser.add_argument('url', nargs='+', type=str)
+
+        parser.add_argument('--file',
+                            action='store_true',
+                            dest='file',
+                            default=False,
+                            help='parses it and writes it to DB from a local file')
 
     def handle(self, *args, **options):
-        url = options.get('url')[0]
-#        self.download(url)
-        self.parse_log_re()
+        self.path_file = options.get('url')[0]
+        if options['file']:
+            self.parse_log_re()
+            print('парсинг из локального файла')
+        else:
+            self.download_re()
+            print('парсинг из удаленного файла')
+#        self.parse_log_re()
 
     def download(self, url):
         r = requests.get(url, stream=True)
@@ -67,7 +86,49 @@ class Command(BaseCommand):
                           + str(self.size_file/1024/1024)
                           + 'Mb')
 
-    def percent(self, size_record):
+    def download_re1(self, url):
+        r = requests.get(url, stream=True)
+        # Размер загружаемого файла из headers
+        self.size_file = int(r.headers.get('Content-Length'))
+
+        self.stdout.write('Start download, parsing and writing to DB.')
+        for line in r.iter_lines(chunk_size=512, decode_unicode=True):
+            self.count_str += 1
+            # self.size_record += len(line) #.encode('utf-8'))
+            if self.count_str > 885000:
+                log = self.parse_line(line, self.count_str)
+                print(str(self.count_str) + ', ' + str(log.ip)
+                      + ', ' + str(log.date) + ', ' + str(log.method)
+                      + ', ' + log.url + ', ' + str(log.id_resp)
+                      + ',' + str(log.resp_size))
+                log.save()
+                if self.count_str > 891603:
+                    break
+
+    def download_re(self):
+        r = requests.get(self.path_file, stream=True)
+        # Размер загружаемого файла из headers
+        self.size_file = int(r.headers.get('Content-Length'))
+
+        self.stdout.write('Start download, parsing and writing to DB.')
+        for line in r.iter_lines(chunk_size=512, decode_unicode=True):
+            self.count_str += 1
+            self.size_record += len(line) #.encode('utf-8'))
+            log = self.parse_line(line, self.count_str)
+            if log.date or log.ip:
+                self.list_log.append(log)
+                per = self.get_percent(self.size_record)
+                if per > self.percent:
+                    self.percent = per
+                    ApacheLog.objects.bulk_create(self.list_log)
+                    self.list_log.clear()
+                    self.stdout.write('Complete - '
+                                      + str(self.percent)
+                                      + '%. Parsed ' + str(self.count_str) + ' rows.'
+                                      , ending='\r')
+
+
+    def get_percent(self, size_record):
         try:
             return int(size_record/self.size_file*100)
         except ZeroDivisionError:
@@ -156,32 +217,25 @@ class Command(BaseCommand):
 
     def parse_log_re(self):
 
-        # список для для массового сохранения объектов ApacheLog
-        list_log = []
         self.size_file = os.path.getsize(self.path_file)
         with open(self.path_file, 'r') as file:
             self.stdout.write('Start parsing and writing to DB.')
-            #количество обработанных строк
-            count_str = 0
-            #размер обработанных строк в байтах
-            size_record = 0
-            percent = 0
 
             for s in file:
-                count_str += 1
-                size_record += len(s.encode('utf-8'))
-                log = self.parse_line(s, count_str)
-                if log.date:
-                    list_log.append(log)
-                    per = self.percent(size_record)
-                    if per > percent:
-                        percent = per
+                self.count_str += 1
+                self.size_record += len(s.encode('utf-8'))
+                log = self.parse_line(s, self.count_str)
+                if log.date or log.ip:
+                    self.list_log.append(log)
+                    per = self.get_percent(self.size_record)
+                    if per > self.percent:
+                        self.percent = per
                         self.stdout.write('Complete - '
-                                          + str(percent)
-                                          + '%. Parsed ' + str(count_str)
-                                          , ending='\r')
-                        ApacheLog.objects.bulk_create(list_log)
-                        list_log.clear()
+                                            + str(self.percent)
+                                            + '%. Parsed ' + str(self.count_str) + ' rows.'
+                                            , ending='\r')
+                        ApacheLog.objects.bulk_create(self.list_log)
+                        self.list_log.clear()
 
     def parse_line(self, line, row_number):
         # принимает строку, возвращает объект модели Лог
@@ -201,19 +255,21 @@ class Command(BaseCommand):
             elif token_type == NO_DATA:
                 # NO_DATA игнорируем
                 continue
-            elif token_type == RAW:
-                resp = re.match(r'([0-9]+)', re_match.group(0))
-                if resp:
-                    log.id_resp = re_match.group(1)
             elif token_type == RAW1:
                 log.id_resp = re_match.group(1)
                 log.resp_size = re_match.group(2)
+                continue
+            elif token_type == RAW:
+#                resp = re.match(r'([0-9]+)', re_match.group(0))
+#                if resp:
+#                    log.id_resp = re_match.group(1)
+                continue
             elif token_type == QUOTED_STRING:
                 un_escape = re.match(r'([A-Z]+)\s(\/|[htps://].*)\s([A-Z]+\/(\d)\.(\d))',
                                     re_match.group(1))
                 if un_escape:
-                    log.method = unescape.group(1)
-                    log.url = unescape.group(2)
+                    log.method = un_escape.group(1)
+                    log.url = un_escape.group(2)
                 else:
                     continue
             elif token_type == DATE:
@@ -235,7 +291,7 @@ RULES = [
     ('[0-9]{1,3}(\.[0-9]{1,3}){3}', IP),
     ('"([^"]+)"', QUOTED_STRING),
     ('\[([^\]]+)\]', DATE),
-    ('([0-9]+)\s([0-9]+)', RAW1),
+    ('([0-9]+)\s([0-9]+)|-', RAW1),
     ('([^\s]+)', RAW),
 ]
 
