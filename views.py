@@ -1,11 +1,10 @@
 from collections import Counter, OrderedDict
 import datetime
+import xlwt
 
 from django.db.models import Sum, Q, Count
 from django.http import HttpResponse
 from django.views.generic import ListView
-
-import xlwt
 
 from .models import ApacheLog
 from .forms import SearchForm
@@ -37,9 +36,6 @@ class IndexView(ListView):
         # queryset без пагинациии
         query_log = self.get_queryset()
 
-        # Сначала я неправильно понял задачу и выводил итоги по странице
-        # query_log = context['log']
-
         # количество записей
         context['count_records'] = query_log.count()
 
@@ -47,18 +43,16 @@ class IndexView(ListView):
         sum_resp = query_log.aggregate(Sum('resp_size'))
         context['sum_responce'] = sum_resp
 
-        # уникальные ip
+        # общее количество уникальных ip
         sum_unique_ip = query_log.aggregate(sum_ip=Count('ip', distinct=True))
-        # sum_unique_ip = len(set(list_ip))
         context['sum_unique_ip'] = sum_unique_ip
 
-        # new_d = OrderedDict(reversed(sorted(Counter(list_ip).items(), key=lambda x: x[1])))
-        # unique_ip = [(k[0], v) for k, v in new_d.items()][0:11]
-        unique_ip = query_log.annotate(unique_ip=Count('ip', distinct=True)).order_by('unique_ip').reverse()[0:11]
+        # агрегация уникальных ip
+        unique_ip = query_log.values('ip').annotate(count_ip=Count('ip')).order_by('count_ip').reverse()[0:11]
         context['unique_ip'] = unique_ip
 
         # информация по http-методам
-        sum_method = [(k[0], v) for k, v in Counter(query_log.values_list('method')).items()]
+        sum_method = query_log.values('method').annotate(sum_method=Count('method')).order_by('sum_method').reverse()
         context['sum_method'] = sum_method
 
         # поисковая форма

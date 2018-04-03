@@ -46,7 +46,7 @@
     {% for ip in unique_ip %}
     <tr>
         <td>{{ip.ip}}</td>
-        <td>{{ip.unique_ip}}</td>
+        <td>{{ip.count_ip}}</td>
     </tr>
     {% endfor %}
     </table>
@@ -56,8 +56,8 @@
     <tr><td>метод</td><td>количество</td></tr>
     {% for method in sum_method %}
     <tr>
-        <td>{{method.0}}</td>
-        <td>{{method.1}}</td>
+        <td>{{method.method}}</td>
+        <td>{{method.sum_method}}</td>
     </tr>
     {% endfor %}
 </table>
