@@ -1,22 +1,22 @@
 import logging
-
 import requests
 import datetime
 import os.path
 import re
 
-from django.core.management.base import BaseCommand, CommandError
-from django.conf import settings
+from django.core.management.base import BaseCommand
+
 from parser_log.models import ApacheLog
 
 
-WSP, QUOTED_STRING, DATE, RAW1, RAW, NO_DATA, IP = range(7) # ENUM
+WSP, REQUEST, QUOTED_STRING, DATE, RAW1, RAW, NO_DATA, IP = range(8) # ENUM
 
 
 RULES = [
     ('\s+', WSP),
     ('-|"-"', NO_DATA),
     ('[0-9]{1,3}(\.[0-9]{1,3}){3}', IP),
+    ('"(([A-Z]+)\s(\/|[htps://].*)\s([A-Z]+\/(\d)\.(\d)))"', REQUEST),
     ('"([^"]+)"', QUOTED_STRING),
     ('\[([^\]]+)\]', DATE),
     ('([0-9]+)\s([0-9]+)|-', RAW1),
@@ -27,16 +27,10 @@ RULES = [
 class Command(BaseCommand):
     help = """Accepts a link or a local path to a log file of a certain format, 
     downloads it, parses it and writes it to DB."""
-
-    # размер обрабатываемого файла
     size_file = 0
-
     path_file = ''
-    # список для для массового сохранения объектов ApacheLog
-    list_log = []
-    # количество обработанных строк
+    list_log = []  # list for bulk save Apache Log objects
     count_str = 0
-    # размер обработанных строк в байтах
     size_record = 0
     percent = 0
 
@@ -62,27 +56,31 @@ class Command(BaseCommand):
         else:
             self.download()
 
+    def line_handling(self, line):
+        self.count_str += 1
+        self.size_record += len(line)
+        log = self.parse_line(line)
+        if log.date or log.ip:
+            self.list_log.append(log)
+            per = self.get_percent(self.size_record)
+            if per > self.percent:
+                self.percent = per
+                self.stdout.write('Complete - '
+                                  + str(self.percent)
+                                  + '%. Parsed ' + str(
+                    self.count_str) + ' rows.'
+                                  , ending='\r')
+                ApacheLog.objects.bulk_create(self.list_log)
+                self.list_log.clear()
+
     def download(self):
         r = requests.get(self.path_file, stream=True)
-        # Размер загружаемого файла из headers
+        # The size of the uploaded file from 'headers'
         self.size_file = int(r.headers.get('Content-Length'))
 
         self.stdout.write('Start download, parsing and writing to DB.')
         for line in r.iter_lines(chunk_size=512, decode_unicode=True):
-            self.count_str += 1
-            self.size_record += len(line) #.encode('utf-8'))
-            log = self.parse_line(line)
-            if log.date or log.ip:
-                self.list_log.append(log)
-                per = self.get_percent(self.size_record)
-                if per > self.percent:
-                    self.percent = per
-                    ApacheLog.objects.bulk_create(self.list_log)
-                    self.list_log.clear()
-                    self.stdout.write('Complete - '
-                                      + str(self.percent)
-                                      + '%. Parsed ' + str(self.count_str) + ' rows.'
-                                      , ending='\r')
+            self.line_handling(line)
 
     def get_percent(self, size_record):
         try:
@@ -112,30 +110,16 @@ class Command(BaseCommand):
             # if none of the templates do not match
 
     def parse_log(self):
-
         self.size_file = os.path.getsize(self.path_file)
         with open(self.path_file, 'r') as file:
             self.stdout.write('Start parsing and writing to DB.')
 
-            for s in file:
-                self.count_str += 1
-                self.size_record += len(s.encode('utf-8'))
-                log = self.parse_line(s)
-                if log.date or log.ip:
-                    self.list_log.append(log)
-                    per = self.get_percent(self.size_record)
-                    if per > self.percent:
-                        self.percent = per
-                        self.stdout.write('Complete - '
-                                            + str(self.percent)
-                                            + '%. Parsed ' + str(self.count_str) + ' rows.'
-                                            , ending='\r')
-                        ApacheLog.objects.bulk_create(self.list_log)
-                        self.list_log.clear()
+            for line in file:
+                self.line_handling(line)
 
     def parse_line(self, line):
-        # принимает строку, возвращает объект модели Лог
-        # или None если битая строка
+        # accepts a string
+        # returns the object model Log
 
         try:
             tokens = self.lex(line)
@@ -146,10 +130,10 @@ class Command(BaseCommand):
         log = ApacheLog()
         for re_match, token_type in tokens:
             if token_type == WSP:
-                # пробелы игнорируем
+                # spaces are ignored
                 continue
             elif token_type == NO_DATA:
-                # NO_DATA игнорируем
+                # NO_DATA are ignored
                 continue
             elif token_type == RAW1:
                 log.id_resp = re_match.group(1)
@@ -158,18 +142,14 @@ class Command(BaseCommand):
             elif token_type == RAW:
                 continue
             elif token_type == QUOTED_STRING:
-                # проверяем соответствие строки нашему шаблону -
-                # метод - зарпрос - версия протокола
-                un_escape = re.match(r'([A-Z]+)\s(\/|[htps://].*)\s([A-Z]+\/(\d)\.(\d))',
-                                    re_match.group(1))
-                if un_escape:
-                    log.method = un_escape.group(1)
-                    log.url = un_escape.group(2)
-                else:
-                    continue
+                # quoted string is ignored
+                continue
+            elif token_type == REQUEST:
+                    log.method = re_match.group(2)
+                    log.url = re_match.group(3)
             elif token_type == DATE:
                 log.date = datetime.datetime.strptime(re_match.group(1),
-                                                   "%d/%b/%Y:%H:%M:%S %z")  # парсим дату
+                                                   "%d/%b/%Y:%H:%M:%S %z")
             elif token_type == IP:
                 log.ip = re_match.group(0)
             else:
