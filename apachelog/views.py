@@ -15,7 +15,7 @@ class IndexView(ListView):
     paginate_by = 50
     model = ApacheLog
     context_object_name = 'log'
-    template_name = 'parser_log/index.html'
+    template_name = 'apachelog/index.html'
     criteria = None
 
     def get_queryset(self):
