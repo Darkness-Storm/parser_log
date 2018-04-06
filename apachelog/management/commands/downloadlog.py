@@ -6,7 +6,7 @@ import re
 
 from django.core.management.base import BaseCommand
 
-from parser_log.models import ApacheLog
+from apachelog.models import ApacheLog
 
 
 WSP, REQUEST, QUOTED_STRING, DATE, RAW1, RAW, NO_DATA, IP = range(8) # ENUM

@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<form action="{% url 'parser_log:index' %}" method="GET">
+<head>
+
+</head>
+<body>
+<form action="{% url 'apachelog:index' %}" method="GET">
     {{ form }}
     <input type="submit" value="Submit" />
 </form>
@@ -32,7 +36,7 @@
 {% endif %}
 
 <br>
-<p><a href="{% url 'parser_log:index' %}">На главную</a> <a href="{% url 'parser_log:export_xls' %}?criteria={{ criteria}}">Export xls</a></p>
+<p><a href="{% url 'apachelog:index' %}">На главную</a> <a href="{% url 'apachelog:export_xls' %}?criteria={{ criteria}}">Export xls</a></p>
 <br>
 <h2>Агрегированная информация по загруженному логу</h2>
 
@@ -78,3 +82,5 @@
 		{% endif %}
 	</span>
 </div>
+
+</body>
