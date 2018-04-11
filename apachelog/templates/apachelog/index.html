@@ -8,9 +8,12 @@
     <input type="submit" value="Submit" />
 </form>
 <br>
-#{% if criteria != None %}
+{% if err == 'records_exceeds_allowed_value' %}
+    <p>Не могу сформировать файл .xlsx - количество записей более 65365.</p>
+{% endif %}
+{% if criteria != None %}
     <p>Результаты поиска по {{ criteria }}</p>
-#{% endif %}
+{% endif %}
 <br>
 {% if log %}
 <table border="2">
@@ -36,7 +39,13 @@
 {% endif %}
 
 <br>
-<p><a href="{% url 'apachelog:index' %}">На главную</a> <a href="{% url 'apachelog:export_xls' %}?criteria={{ criteria}}">Export xls</a></p>
+<p><a href="{% url 'apachelog:index' %}">На главную</a>
+    {% if criteria != None %}
+        <a href="{% url 'apachelog:export_xls' %}?search={{ criteria }}">
+    {% else %}
+            <a href="{% url 'apachelog:export_xls' %}">
+     {% endif %}
+     Export xls</a></p>
 <br>
 <h2>Агрегированная информация по загруженному логу</h2>
 
@@ -74,12 +83,21 @@
 		Страница {{ page_obj.number }} из {{ paginator.num_pages }}
 	</span>
 	<span class="step-links">
-		{% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
-		{% endif %}
-		{% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}">Следующая</a>
-		{% endif %}
+		{% if criteria != None %}
+            {% if page_obj.has_previous %}
+                <a href="?search={{ criteria }}&page={{ page_obj.previous_page_number }}">Предыдущая</a>
+		    {% endif %}
+		    {% if page_obj.has_next %}
+                <a href="?search={{ criteria }}&page={{ page_obj.next_page_number }}">Следующая</a>
+		    {% endif %}
+        {% else %}
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
+		    {% endif %}
+		    {% if page_obj.has_next %}
+                <a href=".?page={{ page_obj.next_page_number }}">Следующая</a>
+		    {% endif %}
+        {% endif %}
 	</span>
 </div>
 
