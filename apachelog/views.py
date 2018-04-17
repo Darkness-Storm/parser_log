@@ -4,8 +4,9 @@ import xlwt
 
 from django.db.models import Sum, Q, Count
 from django.http import HttpResponse
-from django.urls import reverse
 from django.views.generic import ListView
+from django.shortcuts import redirect
+from django.contrib import messages
 
 from .models import ApacheLog
 from .forms import SearchForm
@@ -59,12 +60,10 @@ def export_xls(request):
 
     index = IndexView(request=request)
     queryset_log = index.get_queryset()
-    # if queryset_log.count() > 65365:
-    #     return reverse(IndexView.as_view(), kwargs={
-    #         'request': request,
-    #         'err':'records_exceeds_allowed_value'
-    #         }
-    #     )
+    # if queryset_log.count() > 65536:
+    #     messages.warning(request, 'Не могу сформировать файл .xlsx '
+    #                               '- количество записей более 65536')
+    #     return redirect('/apachelog/')
 
     wb = xlwt.Workbook(encoding='utf-8')
     ws = wb.add_sheet('Log')
@@ -79,7 +78,14 @@ def export_xls(request):
     for row in queryset_log:
         row_num += 1
         col = 0
-        ws.write(row_num, col, row.pk, font_style)
+        try:
+            # trying to write a new row
+            ws.write(row_num, col, row.pk, font_style)
+        except Exception as ex:
+            print("Error! {0}".format(ex))
+            messages.error(request, "Error! {0}".format(ex))
+            return redirect('/apachelog/')
+
         col += 1
         ws.write(row_num, col, row.ip, font_style)
         col += 1

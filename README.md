@@ -8,21 +8,30 @@ Parser_log is a Django app for or data processing and aggregation the Apache log
 Quick start
 -----------
 
-1. Add "parser_log" to your INSTALLED_APPS setting like this::
+=====
+1. Installation
+=====
 
-    INSTALLED_APPS = [
-        ...
-        'parser_log',
-    ]
+    git clone https://Darkness-Storm@bitbucket.org/Darkness-Storm/parser_log.git
 
-2. Include the log_doctor URLconf in your project urls.py like this::
+    (you will need git installed)
 
-    path(r'^log/', include('parser_log.urls')),
+=====
+2. requirements
+=====
+    1. Django==2.0
+    2. requests==2.18
+    3. xlwt==1.3
 
-3. Run `python manage.py migrate` to create the parser_log models.
+    Install the required dependencies by running
+    cd path/to/project/parser_log (go to the project directory)
+    pip install -r requirements.txt
 
-4. Run python manage.py downloadlog url\to\logfile\Apache. 
-   (example "python manage.py downloadlog http://www.almhuette-raith.at/apache-log/access.log")
+4. Run `python manage.py migrate` to create database (default SQLite3) and the parser_log models.
 
-5. Start the development server and visit http://127.0.0.1:8000/log/
+5. Run 'python manage.py downloadlog url\to\logfile\Apache'
+   (example "python manage.py downloadlog http://www.almhuette-raith.at/apache-log/access.log",
+   for more details on 'python manage.py help downloadlog')
+
+6. Start the development server 'python manage.py runserver' and visit http://127.0.0.1:8000/apachelog/
    to view aggregated information about the log file
