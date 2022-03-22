@@ -18,7 +18,7 @@ Quick start
 2. Installation
 ---------------
 
-    1. git clone https://Darkness-Storm@bitbucket.org/Darkness-Storm/parser_log.git
+    1. git clone https://github.com/Darkness-Storm/parser_log.git
 
     (you will need git installed)
 
